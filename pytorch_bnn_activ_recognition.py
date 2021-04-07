@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import cv2, os, sys
-import pandas as pd
 from torch.utils.data import Dataset
 from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset, DataLoader, Subset
@@ -10,9 +9,9 @@ import torchvision.transforms as transforms
 from torchvision.datasets import DatasetFolder
 from PIL import Image
 from BinaryNetpytorch.models.binarized_modules import  BinarizeLinear,BinarizeConv2d
-
+from models.binarized_modules import  Binarize,HingeLoss
 batch_size = 16
-num_epoch = 30
+num_epoch = 200
 
 train_tfm = transforms.Compose([
 	transforms.Grayscale(),
