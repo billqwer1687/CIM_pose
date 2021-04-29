@@ -1,0 +1,5 @@
+2021-04-15 15:37:52 - INFO - saving to ./results/2021-04-15_15-37-52
+2021-04-15 15:37:52 - DEBUG - run arguments: Namespace(batch_size=256, dataset='imagenet', epochs=2500, evaluate=None, gpus='0', input_size=None, lr=0.1, model='resnet', model_config='', momentum=0.9, optimizer='SGD', print_freq=10, results_dir='./results', resume='', save='2021-04-15_15-37-52', start_epoch=0, type='torch.cuda.FloatTensor', weight_decay=0.0001, workers=8)
+2021-04-15 15:37:52 - INFO - creating model resnet
+2021-04-15 15:37:52 - INFO - created model with configuration: {'input_size': None, 'dataset': 'imagenet'}
+2021-04-15 15:37:52 - INFO - number of parameters: 25557032
