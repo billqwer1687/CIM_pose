@@ -21,7 +21,10 @@ from torchvision.utils import save_image
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
+<<<<<<< HEAD
 print(model_names)
+=======
+>>>>>>> 0d30f7b8e44285531022cdc05b2c11c22db27e3a
 
 parser = argparse.ArgumentParser(description='PyTorch ConvNet Training')
 

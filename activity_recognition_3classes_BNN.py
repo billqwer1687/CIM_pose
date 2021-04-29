@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import cv2, os, sys
-import pandas as pd
 from torch.utils.data import Dataset
 from matplotlib import pyplot as plt
 from torch.utils.data import ConcatDataset, DataLoader, Subset
@@ -10,9 +9,13 @@ import torchvision.transforms as transforms
 from torchvision.datasets import DatasetFolder
 from PIL import Image
 from BinaryNetpytorch.models.binarized_modules import  BinarizeLinear,BinarizeConv2d
-
+from models.binarized_modules import  Binarize,HingeLoss
 batch_size = 16
+<<<<<<< HEAD:activity_recognition_3classes_BNN.py
 num_epoch = 60
+=======
+num_epoch = 200
+>>>>>>> 0d30f7b8e44285531022cdc05b2c11c22db27e3a:pytorch_bnn_activ_recognition.py
 
 train_tfm = transforms.Compose([
     transforms.Grayscale(),
