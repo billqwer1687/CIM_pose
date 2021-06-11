@@ -11,7 +11,7 @@ from torchvision.datasets import DatasetFolder
 from PIL import Image
 import torchvision.models as models
 batch_size = 32
-num_epoch = 60
+num_epoch = 1
 
 torch.cuda.set_device(1)
 train_tfm = transforms.Compose([
@@ -173,8 +173,13 @@ def main():
 
 			outputs = model(inputs)
 			_,predicted = torch.max(outputs.data,1)
+			
 			total += labels.size(0)
 			correct += (predicted == labels).sum().item()
+			# for k in range(batch_size):
+			# 	if predicted[k] != labels[k]:
+			# 		print(inputs[k])
+
 			#print(predicted)
 			#print("labels:",labels)
 		print('Test Accuracy:{} %'.format((correct / total) * 100))

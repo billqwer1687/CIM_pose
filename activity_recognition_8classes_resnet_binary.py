@@ -13,8 +13,10 @@ import torchvision.models
 import BinaryNetpytorch.models as models
 from BinaryNetpytorch.models.binarized_modules import  BinarizeLinear,BinarizeConv2d
 import progressbar
+import seaborn as sns
+
 batch_size = 32
-num_epoch = 50
+num_epoch = 60
 
 torch.cuda.set_device(1)
 
@@ -175,64 +177,104 @@ class ResNet_cifar10(ResNet):
         #self.fc = BinarizeLinear(256*self.inflate, 8)
         self.fc = BinarizeConv2d(256*self.inflate, 8, kernel_size=1)
 def main():
-	train_set = DatasetFolder("pose_data2/train", loader=lambda x: Image.open(x), extensions="bmp", transform=train_tfm)
-	test_set = DatasetFolder("pose_data2/test", loader=lambda x: Image.open(x), extensions="bmp", transform=test_tfm)
+    train_set = DatasetFolder("pose_data2/train", loader=lambda x: Image.open(x), extensions="bmp", transform=train_tfm)
+    test_set = DatasetFolder("pose_data2/test", loader=lambda x: Image.open(x), extensions="bmp", transform=test_tfm)
 
-	train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-	test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
-	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-	model = ResNet_cifar10(num_classes=8,block=BasicBlock,depth=18)
-	model = model.to(device)
-	print(model)
-	optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-	criterion = nn.CrossEntropyLoss()
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ResNet_cifar10(num_classes=8,block=BasicBlock,depth=18)
+    model = model.to(device)
+    print(model)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.CrossEntropyLoss()
 
-	for epoch in range(num_epoch):
-		running_loss = 0.0
-		total = 0
-		correct = 0
-		for  i, data in enumerate(train_loader):
-			inputs, labels = data
-			inputs = inputs.to(device)
-			labels = labels.to(device)
-			optimizer.zero_grad()
+    model_path = "model.ckpt"
+    
+    for epoch in range(num_epoch):
+        running_loss = 0.0
+        total = 0
+        correct = 0
+        for  i, data in enumerate(train_loader):
+            inputs, labels = data
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            optimizer.zero_grad()
 
-			outputs = model(inputs)
+            outputs = model(inputs)
 
-			loss = criterion(outputs, labels)
-			loss.backward()
+            loss = criterion(outputs, labels)
+            loss.backward()
 
-			optimizer.step()
+            optimizer.step()
 
-			running_loss += loss.item()
-			total += labels.size(0)
-			_,predicted = torch.max(outputs.data,1)
+            running_loss += loss.item()
+            total += labels.size(0)
+            _,predicted = torch.max(outputs.data,1)
 			#print(predicted)
 			#print("label",labels)
-			correct += (predicted == labels).sum().item()
-		train_acc = correct / total
+            correct += (predicted == labels).sum().item()
+        train_acc = correct / total
 
-		print(f"[ Train | {epoch + 1:03d}/{num_epoch:03d} ] loss = {running_loss:.5f}, acc = {train_acc:.5f}")
+        print(f"[ Train | {epoch + 1:03d}/{num_epoch:03d} ] loss = {running_loss:.5f}, acc = {train_acc:.5f}")
+    
+    torch.save(model.state_dict(), model_path)
+    
+    model = ResNet_cifar10(num_classes=8,block=BasicBlock,depth=18)
+    model = model.to(device)
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
 
-	model.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
 
-	with torch.no_grad():
-		correct = 0
-		total = 0
-
-		for i, data in enumerate(test_loader):
-			inputs, labels = data
+        correct_2 = 0
+        stat = np.zeros((8,8))
+        for i, data in enumerate(test_loader):
+            inputs, labels = data
 			
-			inputs = inputs.to(device)
-			labels = labels.to(device)
+            inputs = inputs.to(device)
+            labels = labels.to(device)
 
-			outputs = model(inputs)
-			_,predicted = torch.max(outputs.data,1)
-			total += labels.size(0)
-			correct += (predicted == labels).sum().item()
+            outputs = model(inputs)
+            _,predicted = torch.max(outputs.data,1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+            for b in range(batch_size):
+                if predicted[b] == 0 or predicted[b] == 1 or predicted[b] == 2 or predicted[b] == 3:
+                    if labels[b] == 0 or labels[b] == 1 or labels[b] == 2 or labels[b] == 3:
+                        correct_2 += 1
+                else:
+                    if labels[b] == 4 or labels[b] == 5 or labels[b] == 6 or labels[b] == 7:
+                        correct_2 += 1
+            
+            
+            
+            for k in range(batch_size):
+                if predicted[k] != labels[k]:
+                    img = inputs[k].mul(255).byte()
+                    img = img.cpu().numpy().squeeze(0)
+                    img = np.moveaxis(img, 0, -1)
+                    
+                    predict = predicted[k].cpu().numpy()
+                    label = labels[k].cpu().numpy()
+                    path = "test_result/predict:"+str(predict)+"_labels:"+str(label)+".jpg"
+                    stat[int(label)][int(predict)] += 1
+                    
+                    
+                    
+                    cv2.imwrite(path,img)
+        print(stat)
+        ax = sns.heatmap(stat, linewidth=0.5)
+        plt.xlabel('Prediction')
+        plt.ylabel('Label')
+        plt.savefig('heatmap.jpg')
 			#print(predicted)
 			#print("labels:",labels)
-		print('Test Accuracy:{} %'.format((correct / total) * 100))
+        print('Test_2clasee Accuracy:{} %'.format((correct_2 / total) * 100))
+        print('Test Accuracy:{} %'.format((correct / total) * 100))
 
 
 
