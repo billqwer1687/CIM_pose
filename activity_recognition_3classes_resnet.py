@@ -74,8 +74,8 @@ class Classifier(nn.Module):
 		return x 
 '''
 def main():
-	train_set = DatasetFolder("pose_data/training/labeled", loader=lambda x: Image.open(x), extensions="bmp", transform=train_tfm)
-	test_set = DatasetFolder("pose_data/testing", loader=lambda x: Image.open(x), extensions="bmp", transform=test_tfm)
+	train_set = DatasetFolder("./dataset/data_0705/lepton/train", loader=lambda x: Image.open(x), extensions="bmp", transform=train_tfm)
+	test_set = DatasetFolder("./dataset/data_0705/lepton/test", loader=lambda x: Image.open(x), extensions="bmp", transform=test_tfm)
 	
 	train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 	test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)

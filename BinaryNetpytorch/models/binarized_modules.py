@@ -105,8 +105,5 @@ class BinarizeConv2d(nn.Conv2d):
             out += self.bias.view(1, -1, 1, 1).expand_as(out)
 
         return out
-<<<<<<< HEAD
-x = torch.tensor([[255.0, 200.0, 201.0], [210.0, 222.0, 223.0]])
-print(Quantize(x,quant_mode='det',  params=None, numBits=8))
-=======
->>>>>>> 0d30f7b8e44285531022cdc05b2c11c22db27e3a
+# x = torch.tensor([[255.0, 200.0, 201.0], [210.0, 222.0, 223.0]])
+# print(Quantize(x,quant_mode='det',  params=None, numBits=8))
