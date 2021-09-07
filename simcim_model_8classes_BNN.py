@@ -17,9 +17,9 @@ from BinaryNetpytorch.models.binarized_modules import  Binarize,HingeLoss
 import seaborn as sns
 import random
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 batch_size = 8
-num_epoch = 150
+num_epoch = 300
 
 seed = 333
 torch.manual_seed(seed)
@@ -38,15 +38,15 @@ class Classifier(nn.Module):
 
         self.cnn_layers1 = nn.Sequential(
             
-            CimSimConv2d(in_channels=1, out_channels=128, kernel_size=7),
+            #CimSimConv2d(in_channels=1, out_channels=128, kernel_size=7),
             #nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.5),
-            CimSimConv2d(in_channels=128, out_channels=64, kernel_size=3),
+            #nn.LeakyReLU(0.5),
+            #CimSimConv2d(in_channels=128, out_channels=64, kernel_size=3),
             #nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.5),
+            #nn.LeakyReLU(0.5),
             
             #input_size(1,30,40)
-            CimSimConv2d(64, 128, 3, 1), #output_size(16,66,66)
+            BinarizeConv2d(1, 64, 3, 1), #output_size(16,66,66)
             #nn.BatchNorm2d(128),
             nn.LeakyReLU(0.5),
             #nn.Dropout(0.2),
@@ -54,7 +54,7 @@ class Classifier(nn.Module):
         )
         self.cnn_layers2 = nn.Sequential(
 
-            CimSimConv2d(128, 64, 3, 1), #output_size(24,31,31)
+            BinarizeConv2d(64, 32, 3, 1), #output_size(24,31,31)
             #nn.BatchNorm2d(64),
             nn.LeakyReLU(0.5),
             #nn.Dropout(0.2),
@@ -63,13 +63,13 @@ class Classifier(nn.Module):
 
         self.cnn_layers3 = nn.Sequential(
 
-            CimSimConv2d(64, 32, 3, 1), #output_size(32,13,13)
+            BinarizeConv2d(32, 16, 3, 1), #output_size(32,13,13)
             #nn.BatchNorm2d(32),
             nn.LeakyReLU(0.5),
             #nn.Dropout(0.2),
             nn.MaxPool2d(kernel_size = 2), #ouput_size(32,6,6)
             #nn.LogSoftmax(),
-            BinarizeConv2d(32, 8, (2,1), 1) #ouput_size(4,2,3) without max :(32,24,34)
+            BinarizeConv2d(16, 8, (3,2), 1) #ouput_size(4,2,3) without max :(32,24,34)
                         
         )
         
@@ -77,14 +77,14 @@ class Classifier(nn.Module):
 
     def forward(self, x):
         #print(x)
-        print("input",float(torch.min(x)),float(torch.max(x)))
+       # print("input",float(torch.min(x)),float(torch.max(x)))
         x = self.cnn_layers1(x)
-        print("layer1",float(torch.min(x)),float(torch.max(x)))
+        #print("layer1",float(torch.min(x)),float(torch.max(x)))
         #print(x)
         x = self.cnn_layers2(x)
-        print("layer2",float(torch.min(x)),float(torch.max(x)))
+        #print("layer2",float(torch.min(x)),float(torch.max(x)))
         x = self.cnn_layers3(x)
-        print("layer3",float(torch.min(x)),float(torch.max(x)))
+        #print("layer3",float(torch.min(x)),float(torch.max(x)))
         #print(x)
         #x = x.flatten(1)
         #x = self.fc_layers(x)
@@ -118,7 +118,7 @@ def Load_data(path, cls):
             
             tmp_input = cv2.imread(data_path + filename,cv2.IMREAD_UNCHANGED)
             #print(tmp_input)
-            tmp_input = cv2.resize(tmp_input, (30,40), interpolation = cv2.INTER_AREA)
+            #tmp_input = cv2.resize(tmp_input, (30,40), interpolation = cv2.INTER_AREA)
             tmp_input = tmp_input.astype(int)
             tmp_input = tmp_input//2
             tmp_input = tmp_input - 63
@@ -161,14 +161,14 @@ def main():
     # test_set = DatasetFolder("./dataset/8cls_srcnnimg/test", loader=lambda x: Image.open(x), extensions="jpg", transform=test_tfm)
     # val_set =  DatasetFolder("./dataset/8cls_srcnnimg/train", loader=lambda x: Image.open(x), extensions="jpg", transform=test_tfm)
 
-    train_data, train_label = Load_data("./dataset/8cls_grideye/train",8)
+    train_data, train_label = Load_data("./dataset/down_8cls_lepton/train",8)
     train = Cls_Dataset(train_data, train_label)
     train_loader = DataLoader(
             train, batch_size=100, shuffle=True,
             num_workers=4, pin_memory=True, drop_last=True
         )
 
-    test_data, test_label = Load_data("./dataset/8cls_grideye/test",8)
+    test_data, test_label = Load_data("./dataset/down_8cls_lepton/test",8)
 
     test = Cls_Dataset(test_data, test_label)
 
@@ -177,7 +177,7 @@ def main():
             num_workers=4, pin_memory=True, drop_last=True
         )
 
-    val_data, val_label = Load_data("./dataset/8cls_grideye/val",8)
+    val_data, val_label = Load_data("./dataset/down_8cls_lepton/val",8)
 
     val = Cls_Dataset(val_data, val_label)
 
@@ -190,7 +190,7 @@ def main():
 
 
     save_path = 'models.ckpt'
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     model = Classifier().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     criterion = nn.CrossEntropyLoss()
