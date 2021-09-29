@@ -192,7 +192,7 @@ class IdealCimConv2d(nn.Conv2d):
         return out
         
 
-device = 'cuda:0'
+device = 'cuda:1'
 '''
 H = [1024, 512]
 sim_model = torch.nn.Sequential(
@@ -276,8 +276,8 @@ class CimSimConv2d(nn.Conv2d):
     #print(input_a.size(), weight.size())
     batch_size = input_a.size()[0]
     out_channel = weight.size()[0]
-    out_width = input_a.size()[2] - 2 * (weight.size()[2] // 2)
-    out_height = input_a.size()[3] - 2 * (weight.size()[3] // 2)
+    out_width = input_a.size()[2] #- 2 * (weight.size()[2] // 2)
+    out_height = input_a.size()[3] #- 2 * (weight.size()[3] // 2)
     simout = torch.zeros(batch_size, out_channel, out_width, out_height, dtype = input_a.dtype).to(input_a.device)
     first = True
     #''' Mapping Table
@@ -285,15 +285,26 @@ class CimSimConv2d(nn.Conv2d):
     LUT = LUT.to(input_a.device)
     if weight.size()[2] == 7:
       kernel_group = 1
-    else:
+    elif weight.size()[2] == 5:
+      kernel_group = 2
+    elif weight.size()[2] == 1:
+      kernel_group = 64
+    elif weight.size()[2] == 3:
       kernel_group = 4
+    
     Digital_input_split = torch.split(input_a, kernel_group, dim=1)
     binary_weight_split = torch.split(weight, kernel_group, dim=1)
     for i in range(len(Digital_input_split)):
+      #print(len(Digital_input_split))
+      #print(len(binary_weight_split))
       temp_output = nn.functional.conv2d(Digital_input_split[i], binary_weight_split[i], None, self.stride, self.padding, self.dilation, self.groups)
       temp_output = torch.round(temp_output / 64)
       temp_output += LUT_OFFSET
+      temp_output[temp_output > 126] = 126
+      temp_output[temp_output < 0] = 0
       temp_output = LUT[temp_output.long()]
+      if(kernel_group == 5):
+        print(temp_output)
       simout += temp_output + 2
     #print (torch.max(simout), torch.min(simout))
     #'''

@@ -13,7 +13,7 @@ from BinaryNetpytorch.models.binarized_modules import  BinarizeConv2d
 import copy
 from skimage.metrics import structural_similarity as ssim
 batch_size = 100
-num_epoch = 200
+num_epoch = 50
 
 train_tfm = transforms.Compose([
     #transforms.ToTensor(),
@@ -222,8 +222,9 @@ def main():
             loss = criterion(outputs, labels)
             running_loss += loss.item()
         test_acc = running_loss / (i+1)
-        #mse = np.mean((img_HR - img_TR) ** 2 )
-        #psnr = 10 * math.log10(255*255/mse)
+        mse = np.mean((img_HR - img_TR) ** 2 )
+        psnr = 10 * math.log10(255*255/mse)
+        print(psnr)
         print(ssim_const/800)
            
         print(f"[ Test | avg_loss = {test_acc:.5f}")
