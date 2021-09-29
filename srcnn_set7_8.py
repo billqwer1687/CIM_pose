@@ -19,7 +19,7 @@ torch.backends.cudnn.enable =True
 torch.backends.cudnn.benchmark = True
 
 batch_size = 1
-num_epoch = 1000
+num_epoch = 100
 M = [1, 4, 1]
 train_tfm = transforms.Compose([
     #transforms.ToTensor(),
@@ -48,7 +48,7 @@ class SRCNN(nn.Module):
             nn.LeakyReLU(0.5),
         )
         self.layer3 = nn.Sequential(
-            BNNConv2d(in_channels=128, out_channels=1, kernel_size=f3, padding=f3//2, bias=True),
+            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=f3, padding=f3//2, bias=True),
             #nn.BatchNorm2d(1)
         )
             
@@ -88,6 +88,10 @@ def main():
     path_LR = "./dataset/Set7_8/Grideye/"
     for filename in sorted(os.listdir(path_LR)):
         img_LR = cv2.imread(os.path.join(path_LR,filename),cv2.IMREAD_UNCHANGED)
+        img_LR = img_LR.astype(int)
+        img_LR = img_LR//2
+        img_LR = img_LR - 63
+        img_LR = np.where(img_LR > 63, 63, img_LR)
         img_LR = img_LR[:, :, np.newaxis]
 
         if img_LR is not None:
@@ -98,6 +102,10 @@ def main():
     path_HR = "./dataset/Set7_8/Lepton/"
     for filename in sorted(os.listdir(path_HR)):
         img_HR = cv2.imread(os.path.join(path_HR,filename),cv2.IMREAD_UNCHANGED)
+        img_HR = img_HR.astype(int)
+        img_HR = img_HR//2
+        img_HR = img_HR - 63
+        img_HR = np.where(img_HR > 63, 63, img_HR)
         img_HR = img_HR[:, :, np.newaxis]
         if img_HR is not None:
             img_HR = img_HR.transpose(2,0,1)
@@ -110,6 +118,10 @@ def main():
     path_LR_test = "./dataset/Set7_8/Grideye_test/"
     for filename in sorted(os.listdir(path_LR_test)):
         img_LR_test = cv2.imread(os.path.join(path_LR_test,filename),cv2.IMREAD_UNCHANGED)
+        img_LR_test = img_LR_test.astype(int)
+        img_LR_test = img_LR_test//2
+        img_LR_test = img_LR_test - 63
+        img_LR_test = np.where(img_LR_test > 63, 63, img_LR_test)
         img_LR_test = img_LR_test[:, :, np.newaxis]
         if img_LR_test is not None:
             img_LR_test = img_LR_test.transpose(2,0,1)
@@ -121,6 +133,10 @@ def main():
     path_HR_test = "./dataset/Set7_8/Lepton_test/"
     for filename in sorted(os.listdir(path_HR_test)):
         img_HR_test = cv2.imread(os.path.join(path_HR_test,filename),cv2.IMREAD_UNCHANGED)
+        img_HR_test = img_HR_test.astype(int)
+        img_HR_test = img_HR_test//2
+        img_HR_test = img_HR_test - 63
+        img_HR_test = np.where(img_HR_test > 63, 63, img_HR_test)
         img_HR_test = img_HR_test[:, :, np.newaxis]
         
         if img_HR_test is not None:
@@ -173,13 +189,13 @@ def main():
             #print(model.layer3[0].weight.grad)
             optimizer.step()
             running_loss += loss.item()
-            if epoch%10 == 0:
-                torch.save(model.state_dict(), './models/srcnn_Set7_8/'+str(epoch)+'.ckpt')
+            #if epoch%10 == 0:
+            #    torch.save(model.state_dict(), './models/srcnn_Set7_8/'+str(epoch)+'.ckpt')
 
         train_acc = running_loss / (i+1)
         print(f"[ Train | avg_loss = {train_acc:.5f}")
         torch.save(model.state_dict(), save_path)
-    print(model.layer3[0].weight.data)
+    #print(model.layer3[0].weight.data)
     model = SRCNN().to(device)
     model.load_state_dict(torch.load(save_path))
     model.eval()
