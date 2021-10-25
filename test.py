@@ -4,29 +4,14 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt 
 import math
+import sys
 from skimage.metrics import structural_similarity as ssim
-
+np.set_printoptions(threshold=sys.maxsize)
 
 
 def main():
-    cls = 8
-    train_path = "./dataset/ccf_output/train/04/200.pickle"
-
-    with open(train_path, "rb") as f_in:
-        tmp_input = pickle.load(f_in)
-        tmp_input = tmp_input.flatten()
-        tmp_input = np.where(tmp_input < 0, tmp_input * (-63/tmp_input.min()), tmp_input * (63/tmp_input.max()))
-        tmp_input = tmp_input * 2
-        tmp_input = np.where(tmp_input < -63, -63, tmp_input)
-        tmp_input = np.where(tmp_input > 63, 63, tmp_input)
-        tmp_input = np.round(tmp_input)
-        plt.hist(tmp_input)
-        plt.savefig("test.png")
-            # tmp_input = np.where(tmp_input < 0, tmp_input * (-63/tmp_input.min()), tmp_input * (63/tmp_input.max()))
-                # tmp_input = tmp_input * factor
-                # tmp_input = np.where(tmp_input < -63, -63, tmp_input)
-                # tmp_input = np.where(tmp_input > 63, 63, tmp_input)
-                # tmp_input = np.round(tmp_input)
+    for i in range(57):
+        os.mkdir('./dataset/feature_map_layer1/'+str(i))
     
 
 

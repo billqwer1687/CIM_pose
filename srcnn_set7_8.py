@@ -5,7 +5,6 @@ import cv2
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from torch.nn.quantized import functional as qF
 from torchvision import transforms
 import numpy as np
 import math
@@ -13,14 +12,22 @@ from SimBinaryNetpytorch.models.binarized_modules import  CimSimConv2d
 from BinaryNetpytorch.models.binarized_modules import  BinarizeConv2d
 import copy
 from skimage.metrics import structural_similarity as ssim
-from bnn_layers import BNNConv2d
+import argparse
 np.set_printoptions(threshold=sys.maxsize)
 torch.backends.cudnn.enable =True
 torch.backends.cudnn.benchmark = True
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--outchannel", type=int,
+                    help="input expected output channel")
+args = parser.parse_args()
+ch = args.outchannel
+in_ch = ch * 2
+out_ch = ch
+
 batch_size = 1
 num_epoch = 100
-M = [1, 4, 1]
+M = [8, 1, 1]
 train_tfm = transforms.Compose([
     #transforms.ToTensor(),
 ])
@@ -34,21 +41,21 @@ class SRCNN_Dataset(Dataset):
         return len(self.input)
 
 class SRCNN(nn.Module):
-    def __init__(self, num_channels=1, f1=7, f2=1, f3=5):
+    def __init__(self, num_channels=1, f1=7, f2=5, f3=5):
         super(SRCNN, self).__init__()
         self.layer1 = nn.Sequential(
-            CimSimConv2d(in_channels=num_channels, out_channels=256, kernel_size=f1, padding=f1//2, bias=False),
+            CimSimConv2d(in_channels=num_channels, out_channels=in_ch, kernel_size=f1, padding=f1//2, bias=False),
             #nn.BatchNorm2d(128),
         )
         self.layer2 = nn.Sequential(
-            CimSimConv2d(in_channels=256, out_channels=128, kernel_size=f2, padding=f2//2, bias=False),
+            CimSimConv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=f2, padding=f2//2, bias=False),
             #nn.BatchNorm2d(64),
         )
         self.act = nn.Sequential(
             nn.LeakyReLU(0.5),
         )
         self.layer3 = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=f3, padding=f3//2, bias=True),
+            nn.Conv2d(in_channels=out_ch, out_channels=1, kernel_size=f3, padding=f3//2, bias=False),
             #nn.BatchNorm2d(1)
         )
             
@@ -58,40 +65,34 @@ class SRCNN(nn.Module):
         #print(x)
         x = self.layer1(x)
         x = x * M[0]
+        x = torch.floor(x)
+        x = self.act(x)
         x[x >  63] =  63
         x[x < -63] = -63
-        x = torch.floor(x)
         #print(x)
         #print("layer1",float(torch.min(x)),float(torch.max(x)))
-        x = self.act(x)
         x = self.layer2(x)
         x *= M[1]
-        x[x >  63] =  63
-        x[x < -63] = -63
         x = torch.floor(x)
-        #print(x)
-        #print("layer2",float(torch.min(x)),float(torch.max(x)))
         x = self.act(x)
-        #print(x)
+        #print("layer2",float(torch.min(x)),float(torch.max(x)))
         out = self.layer3(x)
-        # out -= float(torch.min(out))
-        # out *= float(255/torch.max(out))
-        #out = self.act(out)
-        #print(out)
-        #print("layer3",torch.min(out),torch.max(out))
         return out
 
 
 def main():
+    
     #######train load######
     image_LR = []
     path_LR = "./dataset/Set7_8/Grideye/"
     for filename in sorted(os.listdir(path_LR)):
         img_LR = cv2.imread(os.path.join(path_LR,filename),cv2.IMREAD_UNCHANGED)
         img_LR = img_LR.astype(int)
-        img_LR = img_LR//2
-        img_LR = img_LR - 63
+        img_LR = img_LR - np.min(img_LR)
+        img_LR = img_LR * (63 / np.max(img_LR))
+        img_LR = np.round(img_LR)
         img_LR = np.where(img_LR > 63, 63, img_LR)
+        #print(np.min(img_LR), np.max(img_LR))
         img_LR = img_LR[:, :, np.newaxis]
 
         if img_LR is not None:
@@ -102,10 +103,10 @@ def main():
     path_HR = "./dataset/Set7_8/Lepton/"
     for filename in sorted(os.listdir(path_HR)):
         img_HR = cv2.imread(os.path.join(path_HR,filename),cv2.IMREAD_UNCHANGED)
-        img_HR = img_HR.astype(int)
-        img_HR = img_HR//2
-        img_HR = img_HR - 63
-        img_HR = np.where(img_HR > 63, 63, img_HR)
+        # img_HR = img_HR.astype(int)
+        # img_HR = img_HR//2
+        # img_HR = img_HR - 63
+        # img_HR = np.where(img_HR > 63, 63, img_HR)
         img_HR = img_HR[:, :, np.newaxis]
         if img_HR is not None:
             img_HR = img_HR.transpose(2,0,1)
@@ -119,8 +120,9 @@ def main():
     for filename in sorted(os.listdir(path_LR_test)):
         img_LR_test = cv2.imread(os.path.join(path_LR_test,filename),cv2.IMREAD_UNCHANGED)
         img_LR_test = img_LR_test.astype(int)
-        img_LR_test = img_LR_test//2
-        img_LR_test = img_LR_test - 63
+        img_LR_test = img_LR_test - np.min(img_LR_test)
+        img_LR_test = img_LR_test * (63 / np.max(img_LR_test))
+        img_LR_test = np.round(img_LR_test)
         img_LR_test = np.where(img_LR_test > 63, 63, img_LR_test)
         img_LR_test = img_LR_test[:, :, np.newaxis]
         if img_LR_test is not None:
@@ -133,10 +135,10 @@ def main():
     path_HR_test = "./dataset/Set7_8/Lepton_test/"
     for filename in sorted(os.listdir(path_HR_test)):
         img_HR_test = cv2.imread(os.path.join(path_HR_test,filename),cv2.IMREAD_UNCHANGED)
-        img_HR_test = img_HR_test.astype(int)
-        img_HR_test = img_HR_test//2
-        img_HR_test = img_HR_test - 63
-        img_HR_test = np.where(img_HR_test > 63, 63, img_HR_test)
+        # img_HR_test = img_HR_test.astype(int)
+        # img_HR_test = img_HR_test//2
+        # img_HR_test = img_HR_test - 63
+        # img_HR_test = np.where(img_HR_test > 63, 63, img_HR_test)
         img_HR_test = img_HR_test[:, :, np.newaxis]
         
         if img_HR_test is not None:
@@ -162,7 +164,7 @@ def main():
     device = torch.device('cuda:1')
 
     model = SRCNN().to(device)
-    save_path = './models/srcnn_Set7_8.ckpt'
+    save_path = './models/srcnn_Set7_8_' + str(ch) + '.ckpt'
     
     optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
     criterion = nn.SmoothL1Loss()
@@ -194,8 +196,29 @@ def main():
 
         train_acc = running_loss / (i+1)
         print(f"[ Train | avg_loss = {train_acc:.5f}")
-        torch.save(model.state_dict(), save_path)
+        model.eval()
+        running_loss = 0
+        for  i, data in enumerate(test_loader):
+            inputs, labels = data
+            inputs = inputs.float()
+            labels = labels.float()
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        val_acc = running_loss / (i+1)
+
+        if val_acc < best_accuracy:
+            best_accuracy = val_acc
+            torch.save(model.state_dict(), save_path, _use_new_zipfile_serialization=False)
+            print("Save Model")
+        print(f"[ Val | avg_loss = {val_acc:.5f}")
     #print(model.layer3[0].weight.data)
+    #torch.save(model.state_dict(), save_path)
     model = SRCNN().to(device)
     model.load_state_dict(torch.load(save_path))
     model.eval()
@@ -209,7 +232,7 @@ def main():
             inputs = inputs.to(device)
             labels = labels.to(device)
             outputs = model(inputs)
-            ssim_in = copy.deepcopy(inputs)
+            ssim_in = copy.deepcopy(labels)
             ssim_out = copy.deepcopy(outputs)
             out_img = copy.deepcopy(outputs)
             out_img -= (out_img.min())
@@ -232,6 +255,7 @@ def main():
         mse = np.mean((img_HR - img_TR) ** 2 )
         psnr = 10 * math.log10(255*255/mse)
         print(ssim_const/57)
+        print(psnr)
            
         print(f"[ Test | avg_loss = {test_acc:.5f}")
     
